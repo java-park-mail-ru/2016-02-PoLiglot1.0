@@ -1,9 +1,22 @@
 package main;
 
+
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.Handler;
+import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.server.handler.HandlerList;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.glassfish.jersey.servlet.ServletContainer;
+import org.eclipse.jetty.server.handler.ResourceHandler;
+import org.glassfish.hk2.utilities.binding.AbstractBinder;
+import org.glassfish.jersey.server.ResourceConfig;
+import org.glassfish.jersey.servlet.ServletContainer;
+import rest.Sessions;
+import rest.UserProfile;
+import rest.Users;
+
 
 /**
  * created by snach
@@ -24,8 +37,26 @@ public class Main {
         final Server server = new Server(port);
         final ServletContextHandler contextHandler = new ServletContextHandler(server, "/api/", ServletContextHandler.SESSIONS);
 
-        final ServletHolder servletHolder = new ServletHolder(ServletContainer.class);
-        servletHolder.setInitParameter("javax.ws.rs.Application", "main.RestApplication");
+        final Context context = new Context();
+        context.put(AccountService.class, new AccountServiceImpl());
+
+        final ResourceConfig config = new ResourceConfig(Users.class, Sessions.class);
+        config.register(new AbstractBinder() {
+            @Override
+            protected void configure() {
+                bind(context);
+            }
+        });
+        final ServletHolder servletHolder = new ServletHolder(new ServletContainer(config));
+
+        ResourceHandler resourceHandler = new ResourceHandler();
+        resourceHandler.setDirectoriesListed(true);
+        resourceHandler.setWelcomeFiles(new String[]{ "index.html" });
+        resourceHandler.setResourceBase("public_html");
+
+        HandlerList handlers = new HandlerList();
+        handlers.setHandlers(new Handler[] { resourceHandler, contextHandler });
+        server.setHandler(handlers);
 
         contextHandler.addServlet(servletHolder, "/*");
         server.start();

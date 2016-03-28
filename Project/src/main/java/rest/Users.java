@@ -1,7 +1,9 @@
 package rest;
 
 import main.AccountService;
+import main.AccountServiceImpl;
 
+import javax.inject.Inject;
 import javax.servlet.http.HttpServletRequest;
 import javax.inject.Singleton;
 import javax.ws.rs.*;
@@ -12,22 +14,22 @@ import javax.ws.rs.core.Response;
 import java.util.Collection;
 
 
+
 /**
  * Created by snach
  */
 @Singleton
 @Path("/user")
 public class Users {
-    private AccountService accountService;
+    @Inject
+    private main.Context context;
 
-    public Users(AccountService accountService) {
-        this.accountService = accountService;
-    }
+
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public Response getAllUsers() {
-        final Collection<UserProfile> allUsers = accountService.getAllUsers();
+        final Collection<UserProfile> allUsers = context.get(AccountService.class).getAllUsers();
         return Response.status(Response.Status.OK).entity(allUsers.toArray(new UserProfile[allUsers.size()])).build();
     }
 
@@ -35,7 +37,7 @@ public class Users {
     @Path("{id}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getUserByID(@PathParam("id") long id) {
-        final UserProfile user = accountService.getUserByID(id);
+        final UserProfile user = context.get(AccountService.class).getUserByID(id);
         if (user == null) {
             return Response.status(Response.Status.UNAUTHORIZED).build();
         } else {
@@ -49,7 +51,7 @@ public class Users {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response createUser(UserProfile user, @Context HttpHeaders headers) {
-        if (accountService.addUser(user)) {
+        if (context.get(AccountService.class).addUser(user)) {
             String status = "{ \"id\": \"" + user.getUserID() + "\" }";
             return Response.status(Response.Status.OK).entity(status).build();
         } else {
@@ -63,10 +65,11 @@ public class Users {
     @Produces(MediaType.APPLICATION_JSON)
     public Response editUser(UserProfile user, @PathParam("id") long id, @Context HttpHeaders headers, @Context HttpServletRequest request) {
         String sessionID = request.getSession().getId();
-        UserProfile userSelf = accountService.getUserBySession(sessionID);
+        UserProfile userSelf = context.get(AccountService.class).getUserBySession(sessionID);
+        UserProfile bufUser = new UserProfile("admin", "admin", "admin@email.ru");
         if ((user != null) && (userSelf.getUserID() == id)) {
-            UserProfile userToEdit = accountService.getUserByID(id);
-            accountService.editUser(userToEdit, user);
+            UserProfile userToEdit = context.get(AccountService.class).getUserByID(id);
+            context.get(AccountService.class).editUser(userToEdit, user);
             String status = "{ \"id\": \"" + id + "\" }";
             return Response.status(Response.Status.OK).entity(status).build();
         } else {
@@ -81,10 +84,11 @@ public class Users {
     @Produces(MediaType.APPLICATION_JSON)
     public Response deleteUser(@PathParam("id") long id, @Context HttpHeaders headers, @Context HttpServletRequest request) {
         String sessionID = request.getSession().getId();
-        UserProfile deleteUser = accountService.getUserByID(id);
-        if (accountService.getUserBySession(sessionID).equals(deleteUser) && accountService.isLoggedIn(sessionID)) {
-            accountService.deleteSession(sessionID);
-            accountService.deleteUser(id);
+        UserProfile deleteUser = context.get(AccountService.class).getUserByID(id);
+        if (context.get(AccountService.class).getUserBySession(sessionID).equals(deleteUser) &&
+                context.get(AccountService.class).isLoggedIn(sessionID)) {
+            context.get(AccountService.class).deleteSession(sessionID);
+            context.get(AccountService.class).deleteUser(id);
             return Response.status(Response.Status.OK).build();
         } else {
             String status = "{ \"status\": \"403\", \"message\": \"Чужой юзер\" }";

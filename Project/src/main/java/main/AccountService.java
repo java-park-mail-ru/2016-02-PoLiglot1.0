@@ -5,122 +5,33 @@ import org.jetbrains.annotations.Nullable;
 import rest.UserProfile;
 
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
- * created by snach
+ * Created by Snach on 26.03.16.
  */
-public class AccountService {
-    private final Map<Long, UserProfile> users = new HashMap<>();
-    private final Map<String, UserProfile> sessions = new HashMap<>();
+public interface AccountService {
 
-    private static final Logger logger = new Logger(AccountService.class);
+    Collection<UserProfile> getAllUsers();
 
+    boolean addUser(UserProfile user);
 
-    public AccountService() {
-        UserProfile bufUser = new UserProfile("admin", "admin", "admin@email.ru");
-        users.put(bufUser.getUserID(), bufUser);
-        bufUser = new UserProfile("guest", "12345", "guest@email.ru");
-        users.put(bufUser.getUserID(), bufUser);
-    }
+    UserProfile getUserByID(long userID);
 
-    public Collection<UserProfile> getAllUsers() {
-        return users.values();
-    }
+    UserProfile getUserByLogin(String login);
 
-    public boolean addUser(UserProfile user) {
-        if (this.getUserByLogin(user.getLogin()) != null || this.getUserByEmail(user.getEmail()) != null)
-            return false;
-        if (user.getLogin().isEmpty() || user.getPassword().isEmpty() || user.getEmail().isEmpty())
-            return false;
-        user.setUserID();
-        users.put(user.getUserID(), user);
+    UserProfile getUserByEmail(String email);
 
-        logger.log("Пользователь добавлен: {" + String.valueOf(user.getUserID()) + ", " + String.valueOf(user.getLogin())
-                + ", " + String.valueOf(String.valueOf(user.getPassword())) + ", " + String.valueOf(user.getEmail()) + "}\n");
+    UserProfile getUserBySession(@Nullable String sessionID);
 
-        return true;
-    }
+    boolean isLoggedIn(String sessionID);
 
-    @Nullable
-    public UserProfile getUserByID(long userID) {
+    void addSession(String sessionID, UserProfile user);
 
-        if (users.get(userID) != null) {
-            return users.get(userID);
-        } else {
-            return null;
-        }
-    }
+    void deleteSession(String sessionID);
 
-    @Nullable
-    public UserProfile getUserByLogin(String login) {
-        for (Map.Entry<Long, UserProfile> entry : users.entrySet()) {
-            if (entry.getValue().getLogin().equals(login))
-                return entry.getValue();
-        }
-        return null;
-    }
+    void editUser(@NotNull UserProfile oldUser, UserProfile newUser);
 
-    @Nullable
-    public UserProfile getUserByEmail(String email) {
-        for (Map.Entry<Long, UserProfile> entry : users.entrySet()) {
-            if (entry.getValue().getEmail().equals(email))
-                return entry.getValue();
-        }
-        return null;
-    }
+    void deleteUser(long userID);
 
-    @Nullable
-    public UserProfile getUserBySession(@Nullable String sessionID) {
-        if (sessions.get(sessionID) != null) {
-            return sessions.get(sessionID);
-        } else {
-            return null;
-        }
-    }
-
-    public boolean isLoggedIn(String sessionID) {
-        return sessions.containsKey(sessionID);
-    }
-
-    public void addSession(String sessionID, UserProfile user) {
-        sessions.put(sessionID, user);
-        logger.log("Сессия добавлена: {" + String.valueOf(user.getUserID()) + ", " + String.valueOf(user.getLogin())
-                + ", " + String.valueOf(String.valueOf(user.getPassword())) + ", " + String.valueOf(user.getEmail()) + '}');
-    }
-
-    public void deleteSession(String sessionID) {
-        UserProfile user = getUserBySession(sessionID);
-        sessions.remove(sessionID);
-
-        logger.log("Сессия удалена: {" + String.valueOf(user.getUserID()) + ", " + String.valueOf(user.getLogin())
-                + ", " + String.valueOf(String.valueOf(user.getPassword())) + ", " + String.valueOf(user.getEmail()) + '}');
-    }
-
-    public void editUser(@NotNull UserProfile oldUser, UserProfile newUser) {
-        if (!newUser.getLogin().isEmpty() && this.getUserByLogin(newUser.getLogin()) == null) {
-            users.get(oldUser.getUserID()).setLogin(newUser.getLogin());
-        }
-        if (!newUser.getEmail().isEmpty() && this.getUserByEmail(newUser.getEmail()) == null) {
-            users.get(oldUser.getUserID()).setEmail(newUser.getEmail());
-        }
-        if (!newUser.getPassword().isEmpty()) {
-            users.get(oldUser.getUserID()).setPassword(newUser.getPassword());
-        }
-        logger.log("Пользователь изменен: {" + String.valueOf(oldUser.getUserID()) + '}');
-    }
-
-    public void deleteUser(long userID) {
-        UserProfile user = users.get(userID);
-        users.remove(userID);
-        logger.log("Пользователь удален: {" + String.valueOf(user.getUserID()) + ", " + String.valueOf(user.getLogin())
-                + ", " + String.valueOf(String.valueOf(user.getPassword())) + ", " + String.valueOf(user.getEmail()) + '}');
-    }
-
-    public boolean checkAuth(@NotNull String userName, @NotNull String password){
-        return (getUserByLogin(userName) != null && getUserByLogin(userName).getPassword().equals(password));
-    }
-
+    boolean checkAuth(@NotNull String userName, @NotNull String password);
 }
-

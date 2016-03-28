@@ -1,7 +1,9 @@
 package rest;
 
 import main.AccountService;
+import main.AccountServiceImpl;
 
+import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.*;
@@ -16,18 +18,15 @@ import javax.ws.rs.core.Response;
 @Singleton
 @Path("/session")
 public class Sessions {
-    private AccountService accountService;
-
-    public Sessions(AccountService accountService) {
-        this.accountService = accountService;
-    }
+    @Inject
+    private main.Context context;
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public Response checkSignInUser(@Context HttpServletRequest request) {
         final String sessionID = request.getSession().getId();
-        if (accountService.isLoggedIn(sessionID)) {
-            String status = "{ \"id\": \"" + accountService.getUserBySession(sessionID).getUserID() + "\" }";
+        if (context.get(AccountService.class).isLoggedIn(sessionID)) {
+            String status = "{ \"id\": \"" + context.get(AccountService.class).getUserBySession(sessionID).getUserID() + "\" }";
             return Response.status(Response.Status.OK).entity(status).build();
         } else {
             return Response.status(Response.Status.UNAUTHORIZED).build();
@@ -38,12 +37,12 @@ public class Sessions {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response signInUser(UserProfile user, @Context HttpHeaders headers, @Context HttpServletRequest request) {
-        UserProfile onlineUser = accountService.getUserByLogin(user.getLogin());
+        UserProfile onlineUser = context.get(AccountService.class).getUserByLogin(user.getLogin());
         final String sessionID = request.getSession().getId();
-        if (onlineUser != null && accountService.checkAuth(onlineUser.getLogin(), onlineUser.getPassword())
-                && !accountService.isLoggedIn(sessionID)) {
+        if (onlineUser != null && context.get(AccountService.class).checkAuth(onlineUser.getLogin(), onlineUser.getPassword())
+                && !context.get(AccountService.class).isLoggedIn(sessionID)) {
             final String sessionId = request.getSession().getId();
-            accountService.addSession(sessionId, onlineUser);
+            context.get(AccountService.class).addSession(sessionId, onlineUser);
             String status = "{ \"id\": \"" + onlineUser.getUserID() + "\" }";
             return Response.status(Response.Status.OK).entity(status).build();
         } else {
@@ -54,7 +53,7 @@ public class Sessions {
     @DELETE
     @Produces(MediaType.APPLICATION_JSON)
     public Response logOut(@Context HttpServletRequest request) {
-        accountService.deleteSession(request.getSession().getId());
+        context.get(AccountService.class).deleteSession(request.getSession().getId());
         return Response.status(Response.Status.OK).build();
     }
 }
