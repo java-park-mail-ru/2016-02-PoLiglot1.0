@@ -2,20 +2,32 @@ package rest;
 
 import org.jetbrains.annotations.NotNull;
 
+import javax.persistence.*;
+import java.io.Serializable;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * created by snach
  */
-public class UserProfile {
-    private static final AtomicLong ID_GENETATOR = new AtomicLong(0);
+@Entity
+@Table(name = "users")
+public class UserProfile implements Serializable { // Serializable Important to Hibernate!
+    private static final long serialVersionUID = -8706689714326132798L;
+    @Id
+    @Column(name = "id")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
 
-    private long userID;
+    private long id;
+
     @NotNull
+    @Column(name = "login")
     private String login;
+
     @NotNull
+    @Column(name = "password")
     private String password;
 
+    @Column(name = "email")
     private String email;
 
     public UserProfile() {
@@ -25,18 +37,18 @@ public class UserProfile {
     }
 
     public UserProfile(@NotNull String login, @NotNull String password, @NotNull String email) {
-        this.userID = ID_GENETATOR.getAndIncrement();
+        this.id = -1;
         this.login = login;
         this.password = password;
         this.email = email;
     }
 
     public long getUserID() {
-        return userID;
+        return id;
     }
 
-    public void setUserID() {
-        this.userID = ID_GENETATOR.getAndIncrement();
+    public void setUserID(long id) {
+        this.id = id;
     }
 
     @NotNull

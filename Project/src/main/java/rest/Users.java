@@ -13,8 +13,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.Collection;
 
-
-
 /**
  * Created by snach
  */
@@ -23,8 +21,6 @@ import java.util.Collection;
 public class Users {
     @Inject
     private main.Context context;
-
-
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -66,8 +62,8 @@ public class Users {
     public Response editUser(UserProfile user, @PathParam("id") long id, @Context HttpHeaders headers, @Context HttpServletRequest request) {
         String sessionID = request.getSession().getId();
         UserProfile userSelf = context.get(AccountService.class).getUserBySession(sessionID);
-        UserProfile bufUser = new UserProfile("admin", "admin", "admin@email.ru");
-        if ((user != null) && (userSelf.getUserID() == id)) {
+
+        if ((user != null) && (userSelf != null) && (userSelf.getUserID() == id)) {
             UserProfile userToEdit = context.get(AccountService.class).getUserByID(id);
             context.get(AccountService.class).editUser(userToEdit, user);
             String status = "{ \"id\": \"" + id + "\" }";
@@ -84,9 +80,9 @@ public class Users {
     @Produces(MediaType.APPLICATION_JSON)
     public Response deleteUser(@PathParam("id") long id, @Context HttpHeaders headers, @Context HttpServletRequest request) {
         String sessionID = request.getSession().getId();
-        UserProfile deleteUser = context.get(AccountService.class).getUserByID(id);
-        if (context.get(AccountService.class).getUserBySession(sessionID).equals(deleteUser) &&
-                context.get(AccountService.class).isLoggedIn(sessionID)) {
+        UserProfile deleteUser = context.get(AccountService.class).getUserBySession(sessionID);
+
+        if ( (deleteUser != null) && (deleteUser.getUserID() == id)) {
             context.get(AccountService.class).deleteSession(sessionID);
             context.get(AccountService.class).deleteUser(id);
             return Response.status(Response.Status.OK).build();

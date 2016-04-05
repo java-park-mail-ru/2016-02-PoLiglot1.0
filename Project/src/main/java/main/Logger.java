@@ -12,7 +12,11 @@ public class Logger {
         this.clazz = clazz;
     }
 
+
     public void log(@NotNull String msg) {
-        System.out.append(clazz.getName() + ": " + msg + '\n');
+
+        String methodName = Thread.currentThread().getStackTrace()[2].getMethodName();
+
+        System.out.append(clazz.getName() + ": " + methodName + ": " + msg + '\n');
     }
 }

@@ -1,10 +1,13 @@
 package main;
 
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
+import org.hibernate.cfg.Configuration;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import rest.UserProfile;
-
-import java.util.Collection;
+import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -12,69 +15,109 @@ import java.util.Map;
  * created by snach
  */
 public class AccountServiceImpl implements AccountService{
-    private final Map<Long, UserProfile> users = new HashMap<>();
+
     private final Map<String, UserProfile> sessions = new HashMap<>();
+
+    private SessionFactory sessionFactory;
 
     @SuppressWarnings("ConstantNamingConvention")
     private static final Logger logger = new Logger(AccountServiceImpl.class);
 
-
     public AccountServiceImpl() {
-        UserProfile bufUser = new UserProfile("admin", "admin", "admin@email.ru");
-        users.put(bufUser.getUserID(), bufUser);
-        bufUser = new UserProfile("guest", "12345", "guest@email.ru");
-        users.put(bufUser.getUserID(), bufUser);
+        Configuration configuration = new Configuration();
+        configuration.addAnnotatedClass(UserProfile.class);
+
+        configuration.setProperty("hibernate.dialect", "org.hibernate.dialect.MySQLDialect");
+        configuration.setProperty("hibernate.connection.driver_class", "com.mysql.jdbc.Driver");
+        configuration.setProperty("hibernate.connection.url", "jdbc:mysql://localhost:3306/db_Poliglot");
+        configuration.setProperty("hibernate.connection.username", "root");
+        configuration.setProperty("hibernate.connection.password", "rootPassword");
+        configuration.setProperty("hibernate.show_sql", "true");
+        configuration.setProperty("hibernate.hbm2ddl.auto", "update");
+
+        sessionFactory = configuration.buildSessionFactory();
     }
 
     @Override
-    public Collection<UserProfile> getAllUsers() {
-        return users.values();
+    public List<UserProfile> getAllUsers() {
+        final Session session = sessionFactory.openSession();
+        final UserProfileDAO dao = new UserProfileDAO(session);
+        final List<UserProfile> users = dao.readAll();
+        session.close();
+        return users;
     }
 
     @Override
     public boolean addUser(UserProfile user) {
-        if (this.getUserByLogin(user.getLogin()) != null || this.getUserByEmail(user.getEmail()) != null)
-            return false;
-        if (user.getLogin().isEmpty() || user.getPassword().isEmpty() || user.getEmail().isEmpty())
-            return false;
-        user.setUserID();
-        users.put(user.getUserID(), user);
+        boolean status;
+        try (Session session = sessionFactory.openSession()) {
+            Transaction transaction = session.beginTransaction();
+            UserProfileDAO dao = new UserProfileDAO(session);
+            if (dao.addUser(user)) {
+                status = true;
+                logger.log("Пользователь добавлен: {" + String.valueOf(user.getUserID()) + ", " + String.valueOf(user.getLogin())
+                        + ", " + String.valueOf(String.valueOf(user.getPassword())) + ", " + String.valueOf(user.getEmail()) + "}\n");
+            }
+            else {
+                status = false;
+                logger.log("Пользователь НЕ добавлен");
+            }
+            transaction.commit();
+        }
+        return status;
+    }
 
-        logger.log("Пользователь добавлен: {" + String.valueOf(user.getUserID()) + ", " + String.valueOf(user.getLogin())
-                + ", " + String.valueOf(String.valueOf(user.getPassword())) + ", " + String.valueOf(user.getEmail()) + "}\n");
+    @Override
+    public void editUser(@NotNull UserProfile oldUser, UserProfile newUser) {
+        try (Session session = sessionFactory.openSession()) {
+            Transaction transaction = session.beginTransaction();
+            UserProfileDAO dao = new UserProfileDAO(session);
+            dao.editUser(oldUser,newUser);
+            transaction.commit();
+            logger.log("Пользователь изменен: {" + String.valueOf(oldUser.getUserID()) + '}');
+        }
+    }
 
-        return true;
+    @Override
+    public void deleteUser(long userID) {
+        try (Session session = sessionFactory.openSession()) {
+            Transaction transaction = session.beginTransaction();
+            UserProfileDAO dao = new UserProfileDAO(session);
+            dao.deleteUser(userID);
+            transaction.commit();
+            logger.log("Пользователь удален: {" + String.valueOf(userID)  + '}');
+        }
     }
 
     @Override
     @Nullable
     public UserProfile getUserByID(long userID) {
+        final Session session = sessionFactory.openSession();
+        final UserProfileDAO dao = new UserProfileDAO(session);
+        final UserProfile user = dao.readUserByID(userID);
+        session.close();
+        return user;
 
-        if (users.get(userID) != null) {
-            return users.get(userID);
-        } else {
-            return null;
-        }
     }
 
     @Override
     @Nullable
     public UserProfile getUserByLogin(String login) {
-        for (Map.Entry<Long, UserProfile> entry : users.entrySet()) {
-            if (entry.getValue().getLogin().equals(login))
-                return entry.getValue();
-        }
-        return null;
+        final Session session = sessionFactory.openSession();
+        final UserProfileDAO dao = new UserProfileDAO(session);
+        final UserProfile user = dao.readUserByLogin(login);
+        session.close();
+        return user;
     }
 
     @Override
     @Nullable
     public UserProfile getUserByEmail(String email) {
-        for (Map.Entry<Long, UserProfile> entry : users.entrySet()) {
-            if (entry.getValue().getEmail().equals(email))
-                return entry.getValue();
-        }
-        return null;
+        final Session session = sessionFactory.openSession();
+        final UserProfileDAO dao = new UserProfileDAO(session);
+        final UserProfile user = dao.readUserByEmail(email);
+        session.close();
+        return user;
     }
 
     @Override
@@ -102,38 +145,24 @@ public class AccountServiceImpl implements AccountService{
     @Override
     public void deleteSession(String sessionID) {
         UserProfile user = getUserBySession(sessionID);
-        sessions.remove(sessionID);
-
-        logger.log("Сессия удалена: {" + String.valueOf(user.getUserID()) + ", " + String.valueOf(user.getLogin())
-                + ", " + String.valueOf(String.valueOf(user.getPassword())) + ", " + String.valueOf(user.getEmail()) + '}');
-    }
-
-    @Override
-    public void editUser(@NotNull UserProfile oldUser, UserProfile newUser) {
-        if (!newUser.getLogin().isEmpty() && this.getUserByLogin(newUser.getLogin()) == null) {
-            users.get(oldUser.getUserID()).setLogin(newUser.getLogin());
+        if (user != null) {
+            sessions.remove(sessionID);
+            logger.log("Сессия удалена: {" + String.valueOf(user.getUserID()) + ", " + String.valueOf(user.getLogin())
+                    + ", " + String.valueOf(String.valueOf(user.getPassword())) + ", " + String.valueOf(user.getEmail()) + '}');
+        } else {
+            logger.log("Сессия не может быть удалена, тк не добавлена");
         }
-        if (!newUser.getEmail().isEmpty() && this.getUserByEmail(newUser.getEmail()) == null) {
-            users.get(oldUser.getUserID()).setEmail(newUser.getEmail());
-        }
-        if (!newUser.getPassword().isEmpty()) {
-            users.get(oldUser.getUserID()).setPassword(newUser.getPassword());
-        }
-        logger.log("Пользователь изменен: {" + String.valueOf(oldUser.getUserID()) + '}');
-    }
-
-    @Override
-    public void deleteUser(long userID) {
-        UserProfile user = users.get(userID);
-        users.remove(userID);
-        logger.log("Пользователь удален: {" + String.valueOf(user.getUserID()) + ", " + String.valueOf(user.getLogin())
-                + ", " + String.valueOf(String.valueOf(user.getPassword())) + ", " + String.valueOf(user.getEmail()) + '}');
     }
 
     @Override
     public boolean checkAuth(@NotNull String userName, @NotNull String password){
-        return (getUserByLogin(userName) != null && getUserByLogin(userName).getPassword().equals(password));
+        UserProfile user = getUserByLogin(userName);
+        if (user!= null) {
+            return user.getPassword().equals(password);
+        } else {
+            logger.log("Юзер " + userName + " не найден");
+            return false;
+        }
     }
-
 }
 

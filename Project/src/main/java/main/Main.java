@@ -1,21 +1,17 @@
 package main;
 
-
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.server.handler.HandlerList;
-import org.eclipse.jetty.servlet.ServletContextHandler;
-import org.eclipse.jetty.servlet.ServletHolder;
 import org.glassfish.jersey.servlet.ServletContainer;
 import org.eclipse.jetty.server.handler.ResourceHandler;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.server.ResourceConfig;
-import org.glassfish.jersey.servlet.ServletContainer;
 import rest.Sessions;
-import rest.UserProfile;
 import rest.Users;
+import org.hibernate.HibernateException;
 
 
 /**
@@ -24,42 +20,50 @@ import rest.Users;
 public class Main {
     @SuppressWarnings("OverlyBroadThrowsClause")
     public static void main(String[] args) throws Exception {
+        @SuppressWarnings("ConstantNamingConvention")
+        final Logger logger = new Logger(AccountServiceImpl.class);
         int port = -1;
         if (args.length == 1) {
             port = Integer.valueOf(args[0]);
         } else {
-            System.err.println("Specify port");
+            logger.log("Specify port");
             System.exit(1);
         }
 
-        System.out.append("Starting at port: ").append(String.valueOf(port)).append('\n');
+        logger.log("Starting at port: " + String.valueOf(port) + '\n');
 
-        final Server server = new Server(port);
-        final ServletContextHandler contextHandler = new ServletContextHandler(server, "/api/", ServletContextHandler.SESSIONS);
+        try {
+            final Server server = new Server(port);
 
-        final Context context = new Context();
-        context.put(AccountService.class, new AccountServiceImpl());
+            final ServletContextHandler contextHandler = new ServletContextHandler(server, "/api/", ServletContextHandler.SESSIONS);
 
-        final ResourceConfig config = new ResourceConfig(Users.class, Sessions.class);
-        config.register(new AbstractBinder() {
-            @Override
-            protected void configure() {
-                bind(context);
-            }
-        });
-        final ServletHolder servletHolder = new ServletHolder(new ServletContainer(config));
+            final Context context = new Context();
+            context.put(AccountService.class, new AccountServiceImpl());
 
-        ResourceHandler resourceHandler = new ResourceHandler();
-        resourceHandler.setDirectoriesListed(true);
-        resourceHandler.setWelcomeFiles(new String[]{ "index.html" });
-        resourceHandler.setResourceBase("public_html");
+            final ResourceConfig config = new ResourceConfig(Users.class, Sessions.class);
+            config.register(new AbstractBinder() {
+                @Override
+                protected void configure() {
+                    bind(context);
+                }
+            });
+            final ServletHolder servletHolder = new ServletHolder(new ServletContainer(config));
 
-        HandlerList handlers = new HandlerList();
-        handlers.setHandlers(new Handler[] { resourceHandler, contextHandler });
-        server.setHandler(handlers);
+            ResourceHandler resourceHandler = new ResourceHandler();
+            resourceHandler.setDirectoriesListed(true);
+            resourceHandler.setWelcomeFiles(new String[]{"index.html"});
+            resourceHandler.setResourceBase("public_html");
 
-        contextHandler.addServlet(servletHolder, "/*");
-        server.start();
-        server.join();
+            HandlerList handlers = new HandlerList();
+            handlers.setHandlers(new Handler[]{resourceHandler, contextHandler});
+            server.setHandler(handlers);
+
+            contextHandler.addServlet(servletHolder, "/*");
+            server.start();
+            server.join();
+        } catch (HibernateException e) {
+            logger.log("Fail to connect to db_Poliglot");
+            System.exit(1);
+        }
     }
 }
