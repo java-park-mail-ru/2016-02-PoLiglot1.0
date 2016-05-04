@@ -14,6 +14,7 @@ import java.util.Map;
 public class AccountServiceImpl implements AccountService{
     private final Map<Long, UserProfile> users = new HashMap<>();
     private final Map<String, UserProfile> sessions = new HashMap<>();
+    private final Map<String, UserProfile> usersByLogin = new HashMap<>();
 
     @SuppressWarnings("ConstantNamingConvention")
     private static final Logger logger = new Logger(AccountServiceImpl.class);
@@ -39,6 +40,7 @@ public class AccountServiceImpl implements AccountService{
             return false;
         user.setUserID();
         users.put(user.getUserID(), user);
+        usersByLogin.put(user.getLogin(), user);
 
         logger.log("Пользователь добавлен: {" + String.valueOf(user.getUserID()) + ", " + String.valueOf(user.getLogin())
                 + ", " + String.valueOf(String.valueOf(user.getPassword())) + ", " + String.valueOf(user.getEmail()) + "}\n");
@@ -60,11 +62,14 @@ public class AccountServiceImpl implements AccountService{
     @Override
     @Nullable
     public UserProfile getUserByLogin(String login) {
-        for (Map.Entry<Long, UserProfile> entry : users.entrySet()) {
-            if (entry.getValue().getLogin().equals(login))
-                return entry.getValue();
+        if (usersByLogin.get(login) != null) {
+            System.out.println("по логину " + login + " есть пользователь " + usersByLogin
+            .get(login).getEmail());
+            return usersByLogin.get(login);
+        } else {
+            System.out.println("Пользователь не найден");
+            return null;
         }
-        return null;
     }
 
     @Override
@@ -125,7 +130,9 @@ public class AccountServiceImpl implements AccountService{
     @Override
     public void deleteUser(long userID) {
         UserProfile user = users.get(userID);
+
         users.remove(userID);
+        usersByLogin.remove(user.getLogin());
         logger.log("Пользователь удален: {" + String.valueOf(user.getUserID()) + ", " + String.valueOf(user.getLogin())
                 + ", " + String.valueOf(String.valueOf(user.getPassword())) + ", " + String.valueOf(user.getEmail()) + '}');
     }
