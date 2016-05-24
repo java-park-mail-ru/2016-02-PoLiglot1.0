@@ -1,6 +1,8 @@
 package rest;
 
-import main.AccountService;
+import base.AccountService;
+import account.UserProfile;
+
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.servlet.http.HttpServletRequest;
@@ -17,6 +19,7 @@ import javax.ws.rs.core.Response;
 @Path("/session")
 public class Sessions {
 
+    @SuppressWarnings("unused")
     @Inject
     private main.Context context;
 
@@ -25,7 +28,7 @@ public class Sessions {
     public Response checkSignInUser(@Context HttpServletRequest request) {
         final String sessionID = request.getSession().getId();
         if (context.get(AccountService.class).isLoggedIn(sessionID)) {
-            String status = "{ \"id\": \"" + context.get(AccountService.class).getUserBySession(sessionID).getUserID() + "\" }";
+            final String status = "{ \"id\": \"" + context.get(AccountService.class).getUserBySession(sessionID).getUserID() + "\" }";
             return Response.status(Response.Status.OK).entity(status).build();
         } else {
             return Response.status(Response.Status.UNAUTHORIZED).build();
@@ -36,13 +39,13 @@ public class Sessions {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response signInUser(UserProfile user, @Context HttpHeaders headers, @Context HttpServletRequest request) {
-        UserProfile onlineUser = context.get(AccountService.class).getUserByLogin(user.getLogin());
+        final UserProfile onlineUser = context.get(AccountService.class).getUserByLogin(user.getLogin());
         final String sessionID = request.getSession().getId();
         if (onlineUser != null && context.get(AccountService.class).checkAuth(user.getLogin(), user.getPassword())
                 && !context.get(AccountService.class).isLoggedIn(sessionID)) {
             final String sessionId = request.getSession().getId();
             context.get(AccountService.class).addSession(sessionId, onlineUser);
-            String status = "{ \"id\": \"" + onlineUser.getUserID() + "\" }";
+            final String status = "{ \"id\": \"" + onlineUser.getUserID() + "\" }";
             return Response.status(Response.Status.OK).entity(status).build();
         } else {
             return Response.status(Response.Status.BAD_REQUEST).build();

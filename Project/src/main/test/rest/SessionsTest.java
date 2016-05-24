@@ -1,7 +1,9 @@
 package rest;
 
-import main.AccountService;
-import main.AccountServiceImpl;
+import base.AccountService;
+import account.AccountServiceImpl;
+import account.UserProfile;
+import main.cnf.Config;
 import main.Context;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.server.ResourceConfig;
@@ -13,10 +15,8 @@ import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.Response;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.core.Application;
+
 import static org.junit.Assert.assertEquals;
-import static org.mockito.Mockito.mock;
-
-
 import static org.mockito.Mockito.*;
 
 /**
@@ -26,7 +26,11 @@ public class SessionsTest extends JerseyTest {
     @Override
     protected Application configure() {
         final Context context = new Context();
-        context.put(AccountService.class, new AccountServiceImpl());
+
+        final Config serverConfig = new Config(true);
+        serverConfig.connectToDB();
+
+        context.put(AccountService.class, new AccountServiceImpl(serverConfig.getConfiguration()));
 
         final ResourceConfig config = new ResourceConfig(Users.class, Sessions.class);
         final HttpServletRequest request = mock(HttpServletRequest.class);
@@ -54,7 +58,7 @@ public class SessionsTest extends JerseyTest {
 
     @Test
     public void testSignInUser() {
-        UserProfile user = new UserProfile("test1", "testpass1","1@mail.com");
+        final UserProfile user = new UserProfile("test1", "testpass1", "1@mail.com");
         target("user").request("application/json").put(Entity.json(user), String.class);
         final String jsonSession = target("session").request("application/json").put(Entity.json(user), String.class);
         assertEquals("{ \"id\": \"1\" }", jsonSession);
@@ -62,8 +66,8 @@ public class SessionsTest extends JerseyTest {
 
     @Test
     public void testSignInUserFail() {
-        UserProfile user = new UserProfile("test1", "testpass1","1@mail.com");
-        UserProfile userNonExist = new UserProfile("test123", "testpass123","123@mail.com");
+        final UserProfile user = new UserProfile("test1", "testpass1", "1@mail.com");
+        final UserProfile userNonExist = new UserProfile("test123", "testpass123", "123@mail.com");
         target("user").request("application/json").put(Entity.json(user), String.class);
         final Response session = target("session").request("application/json").put(Entity.json(userNonExist));
         assertEquals(session.getStatus(), BAD_REQUEST);
@@ -71,8 +75,8 @@ public class SessionsTest extends JerseyTest {
 
     @Test
     public void testSignInWithWrongPassword() {
-        UserProfile user = new UserProfile("test1", "testpass1","1@mail.com");
-        UserProfile userWithWrongPassword = new UserProfile("test1", "wrongPass","1@mail.com");
+        final UserProfile user = new UserProfile("test1", "testpass1", "1@mail.com");
+        final UserProfile userWithWrongPassword = new UserProfile("test1", "wrongPass", "1@mail.com");
         target("user").request("application/json").put(Entity.json(user), String.class);
         final Response session = target("session").request("application/json").put(Entity.json(userWithWrongPassword));
         assertEquals(session.getStatus(), BAD_REQUEST);
@@ -80,7 +84,7 @@ public class SessionsTest extends JerseyTest {
 
     @Test
     public void testCheckSignInUser() {
-        UserProfile user = new UserProfile("test1", "testpass1","1@mail.com");
+        final UserProfile user = new UserProfile("test1", "testpass1", "1@mail.com");
         target("user").request("application/json").put(Entity.json(user), String.class);
         target("session").request("application/json").put(Entity.json(user), String.class);
         final String jsonCheckSignIn = target("session").request().get(String.class);
@@ -89,7 +93,7 @@ public class SessionsTest extends JerseyTest {
 
     @Test
     public void testCheckSignInUserFail() {
-        UserProfile user = new UserProfile("test1", "testpass1","1@mail.com");
+        final UserProfile user = new UserProfile("test1", "testpass1", "1@mail.com");
         target("user").request("application/json").put(Entity.json(user), String.class);
         final Response checkSignIn = target("session").request().get();
         assertEquals(checkSignIn.getStatus(), UNAUTHORIZED);
@@ -97,7 +101,7 @@ public class SessionsTest extends JerseyTest {
 
     @Test
     public void testLogOut() {
-        UserProfile user = new UserProfile("test1", "testpass1","1@mail.com");
+        final UserProfile user = new UserProfile("test1", "testpass1", "1@mail.com");
         target("user").request("application/json").put(Entity.json(user), String.class);
         target("session").request("application/json").put(Entity.json(user), String.class);
         final String jsonCheckSignIn = target("session").request().get(String.class);

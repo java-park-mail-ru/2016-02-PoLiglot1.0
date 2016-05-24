@@ -8,7 +8,13 @@
 *.war
 *.ear
 
-Project/.idea/workspace.xml
+/Project/.idea/workspace.xml
+/Project/.idea/inspectionProfiles/Project_Default.xml
+/Project/.idea/libraries/*
+/Project/out/*
+/Project/target/*
+
+.DS_Store
 
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
